@@ -17,37 +17,23 @@ public class CassandraMapStateFactory implements StateFactory {
 
     private final StateType stateType;
     private final CassandraBackingMap.Options options;
-    private final Serializer serializer;
     private int cacheSize;
 
-    private CassandraMapStateFactory(StateType stateType, CassandraBackingMap.Options options, Serializer serializer) {
+    private CassandraMapStateFactory(StateType stateType, CassandraBackingMap.Options options) {
         this.stateType = stateType;
         this.options = options;
-        this.serializer = serializer;
     }
 
     public static <T> CassandraMapStateFactory opaque(CassandraBackingMap.Options options) {
-        return new CassandraMapStateFactory(StateType.OPAQUE, options, new JSONOpaqueSerializer());
-    }
-
-    public static <T> CassandraMapStateFactory opaque(CassandraBackingMap.Options options, Serializer<OpaqueValue<T>> serializer) {
-        return new CassandraMapStateFactory(StateType.OPAQUE, options, serializer);
+        return new CassandraMapStateFactory(StateType.OPAQUE, options);
     }
 
     public static <T> CassandraMapStateFactory transactional(CassandraBackingMap.Options options) {
-        return new CassandraMapStateFactory(StateType.TRANSACTIONAL, options, new JSONTransactionalSerializer());
-    }
-
-    public static <T> CassandraMapStateFactory transactional(CassandraBackingMap.Options options, Serializer<TransactionalValue<T>> serializer) {
-        return new CassandraMapStateFactory(StateType.TRANSACTIONAL, options, serializer);
+        return new CassandraMapStateFactory(StateType.TRANSACTIONAL, options);
     }
 
     public static <T> CassandraMapStateFactory nonTransactional(CassandraBackingMap.Options options) {
-        return new CassandraMapStateFactory(StateType.NON_TRANSACTIONAL, options, new JSONNonTransactionalSerializer());
-    }
-
-    public static <T> CassandraMapStateFactory nonTransactional(CassandraBackingMap.Options options, Serializer<T> serializer) {
-        return new CassandraMapStateFactory(StateType.NON_TRANSACTIONAL, options, serializer);
+        return new CassandraMapStateFactory(StateType.NON_TRANSACTIONAL, options);
     }
 
     public CassandraMapStateFactory withCache(int cacheSize) {
