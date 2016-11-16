@@ -204,6 +204,8 @@ builder.setBolt("BOLT_WRITER", bolt, 4)
 
 ### Trident API support
 
+For a state factory which writes output to Cassandra, use ```CassandraStateFactory``` with an ```INSERT INTO``` statement:
+
 ```java
 
         // Build state
@@ -222,7 +224,7 @@ builder.setBolt("BOLT_WRITER", bolt, 4)
 
 ```
 
-Below `state` API for `querying` data from Cassandra.
+For a state factory which can query Cassandra, use ```CassandraStateFactory``` with a ```SELECT``` statment:
 
 ```java
 
@@ -240,7 +242,45 @@ Below `state` API for `querying` data from Cassandra.
 
 ```
 
-Below MapState with Cassandra IBackingMap.
+For a MapState with Cassandra IBackingMap, the simplest option is to use a ```MapStateBuilder``` which generates CQL statements automatically. 
+The builder supports opaque, transactional and non-transactional map states.
+
+To store values in Cassandra you need to provide a ```StateMapper``` that maps the value to fields.  
+
+For simple values, the ```SimpleStateMapper``` can be used:
+
+```java
+        StateFactory mapState = MapStateFactoryBuilder.opaque()
+         *     .withTable("mykeyspace", "year_month_state")
+         *     .withKeys("year", "month")
+         *     .withStateMapper(SimpleStateMapper.opqaue("txid", "sum", "prevSum"))
+         *     .build();
+```
+
+For complex values you can either custom build a state mapper, or use binary serialization:
+
+```java
+        StateFactory mapState = MapStateFactoryBuilder.opaque()
+         *     .withTable("mykeyspace", "year_month_state")
+         *     .withKeys("year", "month")
+         *     .withJSONBinaryState("state")
+         *     .build();
+```
+
+The JSONBinary methods use the storm JSON serializers, but you can also provide custom serializers if you want.
+
+For instance, the ```NonTransactionalTupleStateMapper```, ```TransactionalTupleStateMapper``` or ```OpaqueTupleStateMapper```
+classes can be used if the map state uses tuples as values.
+
+```java
+        StateFactory mapState = MapStateFactoryBuilder.<ITuple>nontransactional()
+                .withTable("mykeyspace", "year_month_state")
+                .withKeys("year", "month")
+                .withStateMapper(new NonTransactionalTupleStateMapper("latest_value"))
+                .build();
+```
+
+Alternatively, you can construct a ```CassandraMapStateFactory``` yourself:
 
 ```java
 

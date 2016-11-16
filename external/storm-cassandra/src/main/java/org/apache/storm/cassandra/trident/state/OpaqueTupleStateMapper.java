@@ -17,6 +17,10 @@ public class OpaqueTupleStateMapper implements StateMapper<OpaqueValue<ITuple>> 
     private final Fields tupleFields;
     private final Fields tableFields;
 
+    public OpaqueTupleStateMapper(String currTxIdField, String currPrefix, String prevPrefix, String... fields) {
+        this(currTxIdField, currPrefix, prevPrefix, new Fields(fields));
+    }
+
     public OpaqueTupleStateMapper(String currTxIdField, String currPrefix, String prevPrefix, Fields fields) {
         tupleFields = fields;
         ArrayList<String> fieldList = new ArrayList<>();

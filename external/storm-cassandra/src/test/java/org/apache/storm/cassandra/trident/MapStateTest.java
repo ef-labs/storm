@@ -17,6 +17,7 @@ import org.apache.storm.cassandra.client.CassandraConf;
 import org.apache.storm.cassandra.query.CQLStatementTupleMapper;
 import org.apache.storm.cassandra.trident.state.CassandraBackingMap;
 import org.apache.storm.cassandra.trident.state.CassandraMapStateFactory;
+import org.apache.storm.cassandra.trident.state.MapStateFactoryBuilder;
 import org.apache.storm.cassandra.trident.state.SerializerStateMapper;
 import org.apache.storm.trident.TridentState;
 import org.apache.storm.trident.TridentTopology;
@@ -58,24 +59,11 @@ public class MapStateTest {
     @Test
     public void nonTransactionalStateTest() throws InterruptedException {
 
-        CQLStatementTupleMapper get = simpleQuery("SELECT state FROM words_ks.words_table WHERE word = ?")
-                .with(fields("word"))
+        StateFactory factory = MapStateFactoryBuilder.nontransactional()
+                .withTable("words_ks", "words_table")
+                .withKeys("word")
+                .withJSONBinaryState("state")
                 .build();
-
-        CQLStatementTupleMapper put = simpleQuery("INSERT INTO words_ks.words_table (word, state) VALUES (?, ?)")
-                .with(fields("word", "state"))
-                .build();
-
-        CassandraBackingMap.Options<Integer> mapStateOptions = new CassandraBackingMap.Options<Integer>(new CassandraContext())
-                .withBatching(BatchStatement.Type.UNLOGGED)
-                .withKeys(new Fields("word"))
-                .withNonTransactionalSerializer("state")
-                .withMaxParallelism(1)
-                .withMultiGetCQLStatementMapper(get)
-                .withMultiPutCQLStatementMapper(put);
-
-        CassandraMapStateFactory factory = CassandraMapStateFactory.nonTransactional(mapStateOptions)
-                .withCache(0);
 
         wordsTest(factory);
     }
@@ -83,24 +71,11 @@ public class MapStateTest {
     @Test
     public void transactionalStateTest() throws InterruptedException {
 
-        CQLStatementTupleMapper get = simpleQuery("SELECT state FROM words_ks.words_table WHERE word = ?")
-                .with(fields("word"))
+        StateFactory factory = MapStateFactoryBuilder.transactional()
+                .withTable("words_ks", "words_table")
+                .withKeys("word")
+                .withJSONBinaryState("state")
                 .build();
-
-        CQLStatementTupleMapper put = simpleQuery("INSERT INTO words_ks.words_table (word, state) VALUES (?, ?)")
-                .with(fields("word", "state"))
-                .build();
-
-        CassandraBackingMap.Options<Integer> mapStateOptions = new CassandraBackingMap.Options<Integer>(new CassandraContext())
-                .withBatching(BatchStatement.Type.UNLOGGED)
-                .withKeys(new Fields("word"))
-                .withTransactionalSerializer("state")
-                .withMaxParallelism(1)
-                .withMultiGetCQLStatementMapper(get)
-                .withMultiPutCQLStatementMapper(put);
-
-        CassandraMapStateFactory factory = CassandraMapStateFactory.transactional(mapStateOptions)
-                .withCache(0);
 
         wordsTest(factory);
     }
@@ -108,24 +83,11 @@ public class MapStateTest {
     @Test
     public void opaqueStateTest() throws InterruptedException {
 
-        CQLStatementTupleMapper get = simpleQuery("SELECT state FROM words_ks.words_table WHERE word = ?")
-                .with(fields("word"))
+        StateFactory factory = MapStateFactoryBuilder.opaque()
+                .withTable("words_ks", "words_table")
+                .withKeys("word")
+                .withJSONBinaryState("state")
                 .build();
-
-        CQLStatementTupleMapper put = simpleQuery("INSERT INTO words_ks.words_table (word, state) VALUES (?, ?)")
-                .with(fields("word", "state"))
-                .build();
-
-        CassandraBackingMap.Options<OpaqueValue<Integer>> mapStateOptions =  new CassandraBackingMap.Options<OpaqueValue<Integer>>(new CassandraContext())
-                .withBatching(BatchStatement.Type.UNLOGGED)
-                .withKeys(new Fields("word"))
-                .withOpaqueSerializer("state")
-                .withMaxParallelism(1)
-                .withMultiGetCQLStatementMapper(get)
-                .withMultiPutCQLStatementMapper(put);
-
-        CassandraMapStateFactory factory = CassandraMapStateFactory.opaque(mapStateOptions)
-                .withCache(0);
 
         wordsTest(factory);
     }

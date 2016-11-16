@@ -13,6 +13,10 @@ public class NonTransactionalTupleStateMapper implements StateMapper<ITuple> {
 
     private final Fields fields;
 
+    public NonTransactionalTupleStateMapper(String... fields) {
+        this.fields = new Fields(fields);
+    }
+
     public NonTransactionalTupleStateMapper(Fields fields) {
         this.fields = fields;
     }
