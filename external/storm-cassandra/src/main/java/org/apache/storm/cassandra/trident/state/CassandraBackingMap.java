@@ -165,32 +165,32 @@ public class CassandraBackingMap<T> implements IBackingMap<T> {
             return this;
         }
 
-        public Options<T> withNonTransactionalSerializer(String fieldName) {
+        public Options<T> withNonTransactionalJSONBinaryState(String fieldName) {
             this.stateMapper = new SerializerStateMapper<>(fieldName, new JSONNonTransactionalSerializer());
             return this;
         }
 
-        public Options<T> withNonTransactionalSerializer(String fieldName, Serializer<T> serializer) {
+        public Options<T> withNonTransactionalBinaryState(String fieldName, Serializer<T> serializer) {
             this.stateMapper = new SerializerStateMapper<>(fieldName, serializer);
             return this;
         }
 
-        public Options<T> withTransactionalSerializer(String fieldName) {
+        public Options<T> withTransactionalJSONBinaryState(String fieldName) {
             this.stateMapper = new SerializerStateMapper<>(fieldName, new JSONTransactionalSerializer());
             return this;
         }
 
-        public Options<T> withTransactionalSerializer(String fieldName, Serializer<TransactionalValue<T>> serializer) {
+        public Options<T> withTransactionalBinaryState(String fieldName, Serializer<TransactionalValue<T>> serializer) {
             this.stateMapper = new SerializerStateMapper<>(fieldName, serializer);
             return this;
         }
 
-        public Options<T> withOpaqueSerializer(String fieldName) {
+        public Options<T> withOpaqueJSONBinaryState(String fieldName) {
             this.stateMapper = new SerializerStateMapper<>(fieldName, new JSONOpaqueSerializer());
             return this;
         }
 
-        public Options<T> withOpaqueSerializer(String fieldName, Serializer<OpaqueValue<T>> serializer) {
+        public Options<T> withOpaqueBinaryState(String fieldName, Serializer<OpaqueValue<T>> serializer) {
             this.stateMapper = new SerializerStateMapper<>(fieldName, serializer);
             return this;
         }

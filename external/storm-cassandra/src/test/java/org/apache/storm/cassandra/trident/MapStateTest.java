@@ -1,6 +1,5 @@
 package org.apache.storm.cassandra.trident;
 
-import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Session;
@@ -12,21 +11,14 @@ import org.apache.cassandra.locator.SimpleStrategy;
 import org.apache.storm.Config;
 import org.apache.storm.LocalCluster;
 import org.apache.storm.LocalDRPC;
-import org.apache.storm.cassandra.CassandraContext;
 import org.apache.storm.cassandra.client.CassandraConf;
-import org.apache.storm.cassandra.query.CQLStatementTupleMapper;
-import org.apache.storm.cassandra.trident.state.CassandraBackingMap;
-import org.apache.storm.cassandra.trident.state.CassandraMapStateFactory;
 import org.apache.storm.cassandra.trident.state.MapStateFactoryBuilder;
-import org.apache.storm.cassandra.trident.state.SerializerStateMapper;
 import org.apache.storm.trident.TridentState;
 import org.apache.storm.trident.TridentTopology;
 import org.apache.storm.trident.operation.builtin.Count;
 import org.apache.storm.trident.operation.builtin.FilterNull;
 import org.apache.storm.trident.operation.builtin.MapGet;
 import org.apache.storm.trident.operation.builtin.Sum;
-import org.apache.storm.trident.state.JSONNonTransactionalSerializer;
-import org.apache.storm.trident.state.OpaqueValue;
 import org.apache.storm.trident.state.StateFactory;
 import org.apache.storm.trident.testing.FixedBatchSpout;
 import org.apache.storm.trident.testing.Split;
@@ -45,8 +37,6 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import static org.apache.storm.cassandra.DynamicStatementBuilder.fields;
-import static org.apache.storm.cassandra.DynamicStatementBuilder.simpleQuery;
 import static org.junit.Assert.assertEquals;
 
 public class MapStateTest {

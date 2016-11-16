@@ -78,7 +78,8 @@ public class OpaqueTupleStateMapper implements StateMapper<OpaqueValue<ITuple>> 
         for (String valueField : tupleFields) {
             curr.put(valueField, values.get(index++));
         }
-        if (curr.getValues().stream().allMatch(Objects::isNull)) {
+
+        if (isAllNull(curr)) {
             curr = null;
         }
 
@@ -86,10 +87,19 @@ public class OpaqueTupleStateMapper implements StateMapper<OpaqueValue<ITuple>> 
         for (String valueField : tupleFields) {
             prev.put(valueField, values.get(index++));
         }
-        if (prev.getValues().stream().allMatch(Objects::isNull)) {
+        if (isAllNull(prev)) {
             prev = null;
         }
 
-        return new OpaqueValue<>(currTx, curr, prev);
+        return new OpaqueValue<ITuple>(currTx, curr, prev);
+    }
+
+    private boolean isAllNull(SimpleTuple tuple) {
+        for (Object value : tuple.getValues()) {
+            if (value != null) {
+                return false;
+            }
+        }
+        return true;
     }
 }
