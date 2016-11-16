@@ -24,6 +24,7 @@ import org.apache.storm.trident.testing.FixedBatchSpout;
 import org.apache.storm.trident.testing.Split;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Values;
+import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.slf4j.Logger;
@@ -47,7 +48,7 @@ public class MapStateTest {
     private Session session;
 
     @Test
-    public void nonTransactionalStateTest() throws InterruptedException {
+    public void nonTransactionalStateTest() throws Exception {
 
         StateFactory factory = MapStateFactoryBuilder.nontransactional()
                 .withTable("words_ks", "words_table")
@@ -59,7 +60,7 @@ public class MapStateTest {
     }
 
     @Test
-    public void transactionalStateTest() throws InterruptedException {
+    public void transactionalStateTest() throws Exception {
 
         StateFactory factory = MapStateFactoryBuilder.transactional()
                 .withTable("words_ks", "words_table")
@@ -71,7 +72,7 @@ public class MapStateTest {
     }
 
     @Test
-    public void opaqueStateTest() throws InterruptedException {
+    public void opaqueStateTest() throws Exception {
 
         StateFactory factory = MapStateFactoryBuilder.opaque()
                 .withTable("words_ks", "words_table")
@@ -82,7 +83,7 @@ public class MapStateTest {
         wordsTest(factory);
     }
 
-    public void wordsTest(StateFactory factory) throws InterruptedException {
+    public void wordsTest(StateFactory factory) throws Exception {
 
         FixedBatchSpout spout = new FixedBatchSpout(
                 new Fields("sentence"), 3,
@@ -163,7 +164,6 @@ public class MapStateTest {
 
     @After
     public void tearDown() {
-        System.out.println("teardown started");
         session.close();
     }
 
