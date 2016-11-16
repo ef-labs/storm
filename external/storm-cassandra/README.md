@@ -251,20 +251,20 @@ For simple values, the ```SimpleStateMapper``` can be used:
 
 ```java
         StateFactory mapState = MapStateFactoryBuilder.opaque()
-         *     .withTable("mykeyspace", "year_month_state")
-         *     .withKeys("year", "month")
-         *     .withStateMapper(SimpleStateMapper.opqaue("txid", "sum", "prevSum"))
-         *     .build();
+                .withTable("mykeyspace", "year_month_state")
+                .withKeys("year", "month")
+                .withStateMapper(SimpleStateMapper.opqaue("txid", "sum", "prevSum"))
+                .build();
 ```
 
 For complex values you can either custom build a state mapper, or use binary serialization:
 
 ```java
         StateFactory mapState = MapStateFactoryBuilder.opaque()
-         *     .withTable("mykeyspace", "year_month_state")
-         *     .withKeys("year", "month")
-         *     .withJSONBinaryState("state")
-         *     .build();
+                .withTable("mykeyspace", "year_month_state")
+                .withKeys("year", "month")
+                .withJSONBinaryState("state")
+                .build();
 ```
 
 The JSONBinary methods use the storm JSON serializers, but you can also provide custom serializers if you want.
