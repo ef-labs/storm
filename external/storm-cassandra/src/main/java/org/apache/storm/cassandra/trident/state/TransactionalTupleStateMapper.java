@@ -17,6 +17,10 @@ public class TransactionalTupleStateMapper implements StateMapper<TransactionalV
     private final Fields tupleFields;
     private final Fields tableFields;
 
+    public TransactionalTupleStateMapper(String txIdField, String... fields) {
+        this(txIdField, new Fields(fields));
+    }
+
     public TransactionalTupleStateMapper(String txIdField, Fields fields) {
         tupleFields = fields;
         ArrayList<String> fieldList = new ArrayList<>();

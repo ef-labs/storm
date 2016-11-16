@@ -7,6 +7,7 @@ import org.apache.storm.cassandra.CassandraContext;
 import org.apache.storm.cassandra.query.CQLStatementTupleMapper;
 import org.apache.storm.trident.state.*;
 import org.apache.storm.tuple.Fields;
+import org.apache.storm.tuple.ITuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,24 +50,32 @@ public class MapStateFactoryBuilder<T> {
     private String keyspace;
     private String table;
     private String[] keys;
-    private BatchStatement.Type batchingType = BatchStatement.Type.UNLOGGED;
+    private BatchStatement.Type batchingType;
     private Integer maxParallelism = 500;
     private StateType stateType;
     private StateMapper<T> stateMapper;
 
     public static <U> MapStateFactoryBuilder<OpaqueValue<U>> opaque() {
         return new MapStateFactoryBuilder<OpaqueValue<U>>()
-                .withStateType(StateType.OPAQUE);
+                .withStateType(StateType.OPAQUE)
+                .withBatchingType(BatchStatement.Type.UNLOGGED);
     }
 
-    public static <U> MapStateFactoryBuilder<TransactionalValue<U>> transactional(Serializer<TransactionalValue<U>> serializer) {
+    public static <U> MapStateFactoryBuilder<TransactionalValue<U>> transactional() {
+        StateFactory mapState = MapStateFactoryBuilder.<ITuple>nontransactional()
+                .withTable("mykeyspace", "year_month_state")
+                .withKeys("year", "month")
+                .withStateMapper(new NonTransactionalTupleStateMapper("latest_value"))
+                .build();
         return new MapStateFactoryBuilder<TransactionalValue<U>>()
-                .withStateType(StateType.TRANSACTIONAL);
+                .withStateType(StateType.TRANSACTIONAL)
+                .withBatchingType(BatchStatement.Type.LOGGED);
     }
 
     public static <U> MapStateFactoryBuilder<U> nontransactional() {
         return new MapStateFactoryBuilder<U>()
-                .withStateType(StateType.NON_TRANSACTIONAL);
+                .withStateType(StateType.NON_TRANSACTIONAL)
+                .withBatchingType(BatchStatement.Type.LOGGED);
     }
 
     public MapStateFactoryBuilder<T> withTable(String keyspace, String table) {
