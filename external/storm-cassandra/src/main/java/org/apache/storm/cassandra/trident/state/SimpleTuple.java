@@ -11,7 +11,7 @@ import java.util.*;
  */
 public class SimpleTuple implements ITuple, Serializable {
 
-    private static final long serialVersionUID = -8275529219132465229L;
+    private static final long serialVersionUID = -4656331293513898312L;
 
     private final List<String> keys;
     private List<Object> values;
