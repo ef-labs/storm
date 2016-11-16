@@ -295,7 +295,7 @@ Alternatively, you can construct a ```CassandraMapStateFactory``` yourself:
         CassandraBackingMap.Options<Integer> mapStateOptions = new CassandraBackingMap.Options<Integer>(new CassandraContext())
                 .withBatching(BatchStatement.Type.UNLOGGED)
                 .withKeys(new Fields("word"))
-                .withNonTransactionalSerializer("state")
+                .withNonTransactionalJSONBinaryState("state")
                 .withMaxParallelism(1)
                 .withMultiGetCQLStatementMapper(get)
                 .withMultiPutCQLStatementMapper(put);

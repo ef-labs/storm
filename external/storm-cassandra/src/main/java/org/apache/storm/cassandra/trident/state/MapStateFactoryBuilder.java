@@ -142,12 +142,10 @@ public class MapStateFactoryBuilder<T> {
         List<String> stateFields = stateMapper.getStateFields()
                 .toList();
 
-        String[] stateFieldsArray = stateFields
-                .stream()
-                .toArray(String[]::new);
+        String[] stateFieldsArray = stateFields.toArray(new String[stateFields.size()]);
 
         List<String> allFields = new ArrayList<>();
-        Arrays.stream(keys).forEach(allFields::add);
+        Collections.addAll(allFields, keys);
         allFields.addAll(stateFields);
 
         // Build get query
@@ -155,8 +153,9 @@ public class MapStateFactoryBuilder<T> {
                 .from(keyspace, table)
                 .where();
 
-        Arrays.stream(keys)
-                .forEach(key -> getQuery.and(eq(key, bindMarker())));
+        for (String key : keys) {
+            getQuery.and(eq(key, bindMarker()));
+        }
 
         CQLStatementTupleMapper get = boundQuery(getQuery.toString())
                 .bind(all())
@@ -164,7 +163,7 @@ public class MapStateFactoryBuilder<T> {
 
         // Build put query
         Insert putStatement = insertInto(keyspace, table)
-                .values(allFields, Collections.nCopies(allFields.size(), bindMarker()));
+                .values(allFields, Collections.<Object>nCopies(allFields.size(), bindMarker()));
 
         CQLStatementTupleMapper put = boundQuery(putStatement.toString())
                 .bind(all())

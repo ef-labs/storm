@@ -66,10 +66,18 @@ public class TransactionalTupleStateMapper implements StateMapper<TransactionalV
         for (String valueField : tupleFields) {
             curr.put(valueField, values.get(index++));
         }
-        if (curr.getValues().stream().allMatch(Objects::isNull)) {
+
+        boolean isAllNull = true;
+        for (Object value : curr.getValues()) {
+            if (value != null) {
+                isAllNull = false;
+                break;
+            }
+        }
+        if (isAllNull) {
             curr = null;
         }
 
-        return new TransactionalValue<>(txId, curr);
+        return new TransactionalValue<ITuple>(txId, curr);
     }
 }
