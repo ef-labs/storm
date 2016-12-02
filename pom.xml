@@ -27,7 +27,7 @@
 
     <groupId>org.apache.storm</groupId>
     <artifactId>storm</artifactId>
-    <version>1.0.3-SNAPSHOT</version>
+    <version>1.0.2-EF</version>
     <packaging>pom</packaging>
     <name>Storm</name>
     <description>Distributed and fault-tolerant realtime computation</description>
@@ -496,10 +496,17 @@
 
     <distributionManagement>
         <site>
-            <id>storm.maven.website</id>
-            <name>Storm Website</name>
-            <url>file:///tmp/site</url>
+            <id>etown-nexus</id>
+            <url>dav:https://nexus-bos.englishtown.com/content/sites/eflabs-sites/activitystream/${project.version}</url>
         </site>
+        <snapshotRepository>
+            <id>etown-nexus-snapshots</id>
+            <url>https://nexus-bos.englishtown.com/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>etown-nexus-releases</id>
+            <url>https://nexus-bos.englishtown.com/content/repositories/releases</url>
+        </repository>
     </distributionManagement>
 
     <dependencyManagement>
