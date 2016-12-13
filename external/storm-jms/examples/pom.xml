@@ -22,7 +22,7 @@
     <parent>
         <groupId>org.apache.storm</groupId>
         <artifactId>storm-jms-parent</artifactId>
-        <version>1.0.3-SNAPSHOT</version>
+        <version>1.0.3-EF1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
