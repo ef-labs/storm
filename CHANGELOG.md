@@ -1,4 +1,13 @@
 ## 1.0.3
+ * STORM-2234: heartBeatExecutorService in shellSpout don't work well with deactivate
+ * STORM-2216: Favor JSONValue.parseWithException
+ * STORM-2208: HDFS State Throws FileNotFoundException in Azure Data Lake Store file system (adl://)
+ * STORM-2213: ShellSpout has race condition when ShellSpout is being inactive longer than heartbeat timeout
+ * STORM-2210: remove array shuffle from ShuffleGrouping
+ * STORM-2052: Kafka Spout - New Client API - Performance Improvements
+ * storm-2205: Racecondition in getting nimbus summaries while ZK connections are reconnected
+ * STORM-2198: perform RotationAction when stopping HdfsBolt
+ * STORM-2196: A typo in RAS_Node::consumeCPU
  * STORM-2189: RAS_Node::freeCPU outputs incorrect info
  * STORM-2184: Don't wakeup KafkaConsumer on shutdown
  * STORM-2185: Storm Supervisor doesn't delete directories properly sometimes
