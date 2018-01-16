@@ -90,15 +90,18 @@ public class EmbeddedCassandraResource extends ExternalResource {
 
         // Register file cleanup after jvm shutdown
         // Cassandra doesn't actually shut down until jvm shutdown so need to wait for that first.
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            // Sleep before cleaning up files
-            try {
-                Thread.sleep(3000L);
-                cleanupDataDirectories();
-            } catch (Exception e) {
-                throw new RuntimeException(e.getMessage(), e);
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                // Sleep before cleaning up files
+                try {
+                    Thread.sleep(3000L);
+                    cleanupDataDirectories();
+                } catch (Exception e) {
+                    throw new RuntimeException(e.getMessage(), e);
+                }
             }
-        }));
+        });
 
     }
 
