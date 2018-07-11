@@ -53,6 +53,21 @@ public class Config extends HashMap<String, Object> {
     private static final long serialVersionUID = -1550278723792864455L;
 
     /**
+     * In nimbus on startup check if all of the zookeeper ACLs are correct before starting.  If not
+     * don't start nimbus.
+     */
+    @isBoolean
+    public static final String STORM_NIMBUS_ZOOKEEPER_ACLS_CHECK = "storm.nimbus.zookeeper.acls.check";
+
+    /**
+     * In nimbus on startup check if all of the zookeeper ACLs are correct before starting.  If not do
+     * your best to fix them before nimbus starts, if it cannot fix them nimbus will not start.
+     * This overrides any value set for storm.nimbus.zookeeper.acls.check.
+     */
+    @isBoolean
+    public static final String STORM_NIMBUS_ZOOKEEPER_ACLS_FIXUP = "storm.nimbus.zookeeper.acls.fixup";
+
+    /**
      * This is part of a temporary workaround to a ZK bug, it is the 'scheme:acl' for
      * the user Nimbus and Supervisors use to authenticate with ZK.
      */
@@ -208,7 +223,8 @@ public class Config extends HashMap<String, Object> {
     /**
      * A directory on the local filesystem used by Storm for any local
      * filesystem usage it needs. The directory must exist and the Storm daemons must
-     * have permission to read/write from this location.
+     * have permission to read/write from this location. It could be either absolute or relative.
+     * If the setting is a relative directory, it is relative to root directory of Storm installation.
      */
     @isString
     public static final String STORM_LOCAL_DIR = "storm.local.dir";
@@ -731,6 +747,13 @@ public class Config extends HashMap<String, Object> {
     public static final String UI_CENTRAL_LOGGING_URL = "ui.central.logging.url";
 
     /**
+     * Storm UI drop-down pagination value. Set ui.pagination to be a positive integer
+     * or -1 (displays all entries). Valid values: -1, 10, 20, 25 etc.
+     */
+    @isInteger
+    public static final String UI_PAGINATION = "ui.pagination";
+
+    /**
      * HTTP UI port for log viewer
      */
     @isInteger
@@ -1243,7 +1266,8 @@ public class Config extends HashMap<String, Object> {
     /**
      * What directory to use for the blobstore. The directory is expected to be an
      * absolute path when using HDFS blobstore, for LocalFsBlobStore it could be either
-     * absolute or relative.
+     * absolute or relative. If the setting is a relative directory, it is relative to
+     * root directory of Storm installation.
      */
     @isString
     public static final String BLOBSTORE_DIR = "blobstore.dir";
@@ -1600,6 +1624,14 @@ public class Config extends HashMap<String, Object> {
      */
     @isBoolean
     public static final String TOPOLOGY_DEBUG = "topology.debug";
+
+    /**
+     * The fully qualified name of a {@link ShellLogHandler} to handle output
+     * from non-JVM processes e.g. "com.mycompany.CustomShellLogHandler". If
+     * not provided, org.apache.storm.utils.DefaultLogHandler will be used.
+     */
+    @isString
+    public static final String TOPOLOGY_MULTILANG_LOG_HANDLER = "topology.multilang.log.handler";
 
     /**
      * The serializer for communication between shell components and non-JVM

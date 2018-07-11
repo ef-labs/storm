@@ -30,14 +30,17 @@ public abstract class Subscription implements Serializable {
     private static final long serialVersionUID = -216136367240198716L;
 
     /**
-     * Subscribe the KafkaConsumer to the proper topics
+     * Subscribe the KafkaConsumer to the proper topics. Implementations must ensure that a given topic partition is always assigned to the
+     * same spout task. Adding and removing partitions as necessary is fine, but partitions must not move from one task to another. This
+     * constraint is only important for use with the Trident spout.
+     *
      * @param consumer the Consumer to get.
      * @param listener the rebalance listener to include in the subscription
      */
     public abstract <K, V> void subscribe(KafkaConsumer<K,V> consumer, ConsumerRebalanceListener listener, TopologyContext context);
     
     /**
-     * @return a string representing the subscribed topics.
+     * @return A human-readable string representing the subscribed topics.
      */
     public abstract String getTopicsString();
     

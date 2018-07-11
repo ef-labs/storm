@@ -313,7 +313,7 @@
             <directory>${project.basedir}/../../external/storm-kafka-monitor/target</directory>
             <outputDirectory>toollib</outputDirectory>
             <includes>
-                <include>storm*jar</include>
+                <include>storm-kafka-monitor-${project.version}.jar</include>
             </includes>
         </fileSet>
     </fileSets>
@@ -338,6 +338,12 @@
             <source>${project.basedir}/../../conf/storm-env.sh</source>
             <outputDirectory>/conf</outputDirectory>
             <destName>storm-env.sh</destName>
+            <fileMode>0755</fileMode>
+        </file>
+        <file>
+            <source>${project.basedir}/../../conf/storm-env.ps1</source>
+            <outputDirectory>/conf</outputDirectory>
+            <destName>storm-env.ps1</destName>
             <fileMode>0755</fileMode>
         </file>
         <file>
@@ -372,11 +378,6 @@
             <source>${project.basedir}/../../README.markdown</source>
             <outputDirectory>/</outputDirectory>
         </file>
-        <file>
-            <source>${project.basedir}/../../CHANGELOG.md</source>
-            <outputDirectory>/</outputDirectory>
-        </file>
-
         <file>
             <source>${project.basedir}/../../SECURITY.md</source>
             <outputDirectory>/</outputDirectory>

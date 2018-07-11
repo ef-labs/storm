@@ -32,6 +32,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.curator.ensemble.exhibitor.DefaultExhibitorRestClient;
 import org.apache.curator.ensemble.exhibitor.ExhibitorEnsembleProvider;
 import org.apache.curator.ensemble.exhibitor.Exhibitors;
+import org.apache.curator.framework.api.ACLProvider;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.storm.Config;
@@ -860,52 +861,9 @@ public class Utils {
      * @param jarFile the .jar file to unpack
      * @param toDir the destination directory into which to unpack the jar
      */
-    public static void unJar(File jarFile, File toDir)
-            throws IOException {
-        JarFile jar = new JarFile(jarFile);
-        try {
-            Enumeration<JarEntry> entries = jar.entries();
-            while (entries.hasMoreElements()) {
-                final JarEntry entry = entries.nextElement();
-                if (!entry.isDirectory()) {
-                    InputStream in = jar.getInputStream(entry);
-                    try {
-                        File file = new File(toDir, entry.getName());
-                        ensureDirectory(file.getParentFile());
-                        OutputStream out = new FileOutputStream(file);
-                        try {
-                            copyBytes(in, out, 8192);
-                        } finally {
-                            out.close();
-                        }
-                    } finally {
-                        in.close();
-                    }
-                }
-            }
-        } finally {
-            jar.close();
-        }
-    }
-
-    /**
-     * Copies from one stream to another.
-     *
-     * @param in InputStream to read from
-     * @param out OutputStream to write to
-     * @param buffSize the size of the buffer
-     */
-    public static void copyBytes(InputStream in, OutputStream out, int buffSize)
-            throws IOException {
-        PrintStream ps = out instanceof PrintStream ? (PrintStream)out : null;
-        byte buf[] = new byte[buffSize];
-        int bytesRead = in.read(buf);
-        while (bytesRead >= 0) {
-            out.write(buf, 0, bytesRead);
-            if ((ps != null) && ps.checkError()) {
-                throw new IOException("Unable to write to output stream.");
-            }
-            bytesRead = in.read(buf);
+    public static void unJar(File jarFile, File toDir) throws IOException {
+        try (JarFile jar = new JarFile(jarFile)) {
+            extractZipFile(jar, toDir, null);
         }
     }
 
@@ -929,20 +887,17 @@ public class Utils {
      *
      * @param inFile   The tar file as input.
      * @param untarDir The untar directory where to untar the tar file.
+     * @param symlinksDisabled true if symlinks should be disabled, else false.
      * @throws IOException
      */
-    public static void unTar(File inFile, File untarDir) throws IOException {
-        if (!untarDir.mkdirs()) {
-            if (!untarDir.isDirectory()) {
-                throw new IOException("Mkdirs failed to create " + untarDir);
-            }
-        }
+    public static void unTar(File inFile, File untarDir, boolean symlinksDisabled) throws IOException {
+        ensureDirectory(untarDir);
 
         boolean gzipped = inFile.toString().endsWith("gz");
-        if (isOnWindows()) {
+        if (Utils.isOnWindows() || symlinksDisabled) {
             // Tar is not native to Windows. Use simple Java based implementation for
             // tests and simple tar archives
-            unTarUsingJava(inFile, untarDir, gzipped);
+            unTarUsingJava(inFile, untarDir, gzipped, symlinksDisabled);
         } else {
             // spawn tar utility to untar archive for full fledged unix behavior such
             // as resolving symlinks in tar archives
@@ -979,7 +934,9 @@ public class Utils {
     }
 
     private static void unTarUsingJava(File inFile, File untarDir,
-                                       boolean gzipped) throws IOException {
+                                       boolean gzipped, boolean symlinksDisabled) throws IOException {
+        final String base = untarDir.getCanonicalPath();
+        LOG.trace("java untar {} to {}", inFile, base);
         InputStream inputStream = null;
         try {
             if (gzipped) {
@@ -990,7 +947,7 @@ public class Utils {
             }
             try (TarArchiveInputStream tis = new TarArchiveInputStream(inputStream)) {
                 for (TarArchiveEntry entry = tis.getNextTarEntry(); entry != null; ) {
-                    unpackEntries(tis, entry, untarDir);
+                    unpackEntries(tis, entry, untarDir, base, symlinksDisabled);
                     entry = tis.getNextTarEntry();
                 }
             }
@@ -1002,35 +959,82 @@ public class Utils {
     }
 
     private static void unpackEntries(TarArchiveInputStream tis,
-                                      TarArchiveEntry entry, File outputDir) throws IOException {
-        if (entry.isDirectory()) {
-            File subDir = new File(outputDir, entry.getName());
-            if (!subDir.mkdirs() && !subDir.isDirectory()) {
-                throw new IOException("Mkdirs failed to create tar internal dir "
-                        + outputDir);
-            }
-            for (TarArchiveEntry e : entry.getDirectoryEntries()) {
-                unpackEntries(tis, e, subDir);
-            }
+                                      TarArchiveEntry entry, File outputDir, final String base,
+                                      boolean symlinksDisabled) throws IOException {
+        File target = new File(outputDir, entry.getName());
+        String found = target.getCanonicalPath();
+        if (!found.startsWith(base)) {
+            LOG.error("Invalid location {} is outside of {}", found, base);
             return;
         }
-        File outputFile = new File(outputDir, entry.getName());
-        if (!outputFile.getParentFile().exists()) {
-            if (!outputFile.getParentFile().mkdirs()) {
-                throw new IOException("Mkdirs failed to create tar internal dir "
-                                      + outputDir);
+        if (entry.isDirectory()) {
+            LOG.trace("Extracting dir {}", target);
+            ensureDirectory(target);
+            for (TarArchiveEntry e : entry.getDirectoryEntries()) {
+                unpackEntries(tis, e, target, base, symlinksDisabled);
+            }
+        } else if (entry.isSymbolicLink()) {
+            if (symlinksDisabled) {
+                LOG.info("Symlinks disabled skipping {}", target);
+            } else {
+                Path src = target.toPath();
+                Path dest = Paths.get(entry.getLinkName());
+                LOG.trace("Extracting sym link {} to {}", target, dest);
+                // Create symbolic link relative to tar parent dir
+                Files.createSymbolicLink(src, dest);
+            }
+        } else if (entry.isFile()) {
+            LOG.trace("Extracting file {}", target);
+            ensureDirectory(target.getParentFile());
+            try (BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(target))) {
+                IOUtils.copy(tis, outputStream);
+            }
+        } else {
+            LOG.error("{} is not a currently supported tar entry type.", entry);
+        }
+
+        Path p = target.toPath();
+        if (Files.exists(p)) {
+            try {
+                //We created it so lets chmod it properly
+                int mode = entry.getMode();
+                Files.setPosixFilePermissions(p, parsePerms(mode));
+            } catch (UnsupportedOperationException e) {
+                //Ignored the file system we are on does not support this, so don't do it.
             }
         }
-        int count;
-        byte data[] = new byte[2048];
-        BufferedOutputStream outputStream = new BufferedOutputStream(
-                new FileOutputStream(outputFile));
+    }
 
-        while ((count = tis.read(data)) != -1) {
-            outputStream.write(data, 0, count);
+    private static Set<PosixFilePermission> parsePerms(int mode) {
+        Set<PosixFilePermission> ret = new HashSet<>();
+        if ((mode & 0001) > 0) {
+            ret.add(PosixFilePermission.OTHERS_EXECUTE);
         }
-        outputStream.flush();
-        outputStream.close();
+        if ((mode & 0002) > 0) {
+            ret.add(PosixFilePermission.OTHERS_WRITE);
+        }
+        if ((mode & 0004) > 0) {
+            ret.add(PosixFilePermission.OTHERS_READ);
+        }
+        if ((mode & 0010) > 0) {
+            ret.add(PosixFilePermission.GROUP_EXECUTE);
+        }
+        if ((mode & 0020) > 0) {
+            ret.add(PosixFilePermission.GROUP_WRITE);
+        }
+        if ((mode & 0040) > 0) {
+            ret.add(PosixFilePermission.GROUP_READ);
+        }
+        if ((mode & 0100) > 0) {
+            ret.add(PosixFilePermission.OWNER_EXECUTE);
+        }
+        if ((mode & 0200) > 0) {
+            ret.add(PosixFilePermission.OWNER_WRITE);
+        }
+        if ((mode & 0400) > 0) {
+            ret.add(PosixFilePermission.OWNER_READ);
+        }
+        return ret;
     }
 
     public static boolean isOnWindows() {
@@ -1044,16 +1048,21 @@ public class Utils {
         return Paths.get(path).isAbsolute();
     }
 
-    public static void unpack(File localrsrc, File dst) throws IOException {
+    public static void unpack(File localrsrc, File dst, boolean symLinksDisabled) throws IOException {
         String lowerDst = localrsrc.getName().toLowerCase();
-        if (lowerDst.endsWith(".jar")) {
+        if (lowerDst.endsWith(".jar") ||
+            lowerDst.endsWith("_jar")) {
             unJar(localrsrc, dst);
-        } else if (lowerDst.endsWith(".zip")) {
+        } else if (lowerDst.endsWith(".zip") ||
+            lowerDst.endsWith("_zip")) {
             unZip(localrsrc, dst);
         } else if (lowerDst.endsWith(".tar.gz") ||
-                lowerDst.endsWith(".tgz") ||
-                lowerDst.endsWith(".tar")) {
-            unTar(localrsrc, dst);
+            lowerDst.endsWith("_tar_gz") ||
+            lowerDst.endsWith(".tgz") ||
+            lowerDst.endsWith("_tgz") ||
+            lowerDst.endsWith(".tar") ||
+            lowerDst.endsWith("_tar")) {
+            unTar(localrsrc, dst, symLinksDisabled);
         } else {
             LOG.warn("Cannot unpack " + localrsrc);
             if (!localrsrc.renameTo(dst)) {
@@ -1063,6 +1072,35 @@ public class Utils {
         }
         if (localrsrc.isFile()) {
             localrsrc.delete();
+        }
+    }
+
+    private static void extractZipFile(ZipFile zipFile, File toDir, String prefix) throws IOException {
+        ensureDirectory(toDir);
+        final String base = toDir.getCanonicalPath();
+
+        Enumeration<? extends ZipEntry> entries = zipFile.entries();
+        while (entries.hasMoreElements()) {
+            ZipEntry entry = entries.nextElement();
+            if (!entry.isDirectory()) {
+                if (prefix != null && !entry.getName().startsWith(prefix)) {
+                    //No need to extract it, it is not what we are looking for.
+                    continue;
+                }
+                File file = new File(toDir, entry.getName());
+                String found = file.getCanonicalPath();
+                if (!found.startsWith(base)) {
+                    LOG.error("Invalid location {} is outside of {}", found, base);
+                    continue;
+                }
+
+                try (InputStream in = zipFile.getInputStream(entry)) {
+                    ensureDirectory(file.getParentFile());
+                    try (OutputStream out = new FileOutputStream(file)) {
+                        IOUtils.copy(in, out);
+                    }
+                }
+            }
         }
     }
 
@@ -1079,15 +1117,16 @@ public class Utils {
         return false;
     }
 
-    public static CuratorFramework newCurator(Map conf, List<String> servers, Object port, String root) {
-        return newCurator(conf, servers, port, root, null);
+    public static CuratorFramework newCurator(Map conf, List<String> servers, Object port, String root, List<ACL> defaultAcl) {
+        return newCurator(conf, servers, port, root, null, defaultAcl);
     }
 
-    public static CuratorFramework newCurator(Map conf, List<String> servers, Object port, ZookeeperAuthInfo auth) {
-        return newCurator(conf, servers, port, "", auth);
+    public static CuratorFramework newCurator(Map conf, List<String> servers, Object port, ZookeeperAuthInfo auth, List<ACL> defaultAcl) {
+        return newCurator(conf, servers, port, "", auth, defaultAcl);
     }
 
-    public static CuratorFramework newCurator(Map conf, List<String> servers, Object port, String root, ZookeeperAuthInfo auth) {
+    public static CuratorFramework newCurator(Map conf, List<String> servers, Object port, String root, ZookeeperAuthInfo auth,
+                                              final List<ACL> defaultAcl) {
         List<String> serverPorts = new ArrayList<String>();
         for (String zkServer : servers) {
             serverPorts.add(zkServer + ":" + Utils.getInt(port));
@@ -1096,6 +1135,19 @@ public class Utils {
         CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory.builder();
 
         setupBuilder(builder, zkStr, conf, auth);
+        if (defaultAcl != null) {
+            builder.aclProvider(new ACLProvider() {
+                @Override
+                public List<ACL> getDefaultAcl() {
+                    return defaultAcl;
+                }
+
+                @Override
+                public List<ACL> getAclForPath(String s) {
+                    return null;
+                }
+            });
+        }
 
         return builder.build();
     }
@@ -1142,15 +1194,15 @@ public class Utils {
         setupBuilder(builder, zkStr, conf, auth);
     }
 
-    public static CuratorFramework newCuratorStarted(Map conf, List<String> servers, Object port, String root, ZookeeperAuthInfo auth) {
-        CuratorFramework ret = newCurator(conf, servers, port, root, auth);
+    public static CuratorFramework newCuratorStarted(Map conf, List<String> servers, Object port, String root, ZookeeperAuthInfo auth, List<ACL> defaultAcl) {
+        CuratorFramework ret = newCurator(conf, servers, port, root, auth, defaultAcl);
         LOG.info("Starting Utils Curator...");
         ret.start();
         return ret;
     }
 
-    public static CuratorFramework newCuratorStarted(Map conf, List<String> servers, Object port, ZookeeperAuthInfo auth) {
-        CuratorFramework ret = newCurator(conf, servers, port, auth);
+    public static CuratorFramework newCuratorStarted(Map conf, List<String> servers, Object port, ZookeeperAuthInfo auth, List<ACL> defaultAcl) {
+        CuratorFramework ret = newCurator(conf, servers, port, auth, defaultAcl);
         LOG.info("Starting Utils Curator (2)...");
         ret.start();
         return ret;
@@ -1227,23 +1279,39 @@ public class Utils {
                 && !((String)conf.get(Config.STORM_ZOOKEEPER_TOPOLOGY_AUTH_SCHEME)).isEmpty());
     }
 
-
-    public static List<ACL> getWorkerACL(Map conf) {
-        //This is a work around to an issue with ZK where a sasl super user is not super unless there is an open SASL ACL so we are trying to give the correct perms
-        if (!isZkAuthenticationConfiguredTopology(conf)) {
-            return null;
+    public static Id parseZkId(String id, String configName) {
+        String[] split = id.split(":", 2);
+        if (split.length != 2) {
+            throw new IllegalArgumentException(configName + " does not appear to be in the form scheme:acl, i.e. sasl:storm-user");
         }
+        return new Id(split[0], split[1]);
+    }
+
+    /**
+     * Get the ACL for nimbus/supervisor.  The Super User ACL. This assumes that security is enabled.
+     * @param conf the config to get the super User ACL from
+     * @return the super user ACL.
+     */
+    public static ACL getSuperUserAcl(Map<String, Object> conf) {
         String stormZKUser = (String)conf.get(Config.STORM_ZOOKEEPER_SUPERACL);
         if (stormZKUser == null) {
             throw new IllegalArgumentException("Authentication is enabled but " + Config.STORM_ZOOKEEPER_SUPERACL + " is not set");
         }
-        String[] split = stormZKUser.split(":", 2);
-        if (split.length != 2) {
-            throw new IllegalArgumentException(Config.STORM_ZOOKEEPER_SUPERACL + " does not appear to be in the form scheme:acl, i.e. sasl:storm-user");
+        return new ACL(ZooDefs.Perms.ALL, parseZkId(stormZKUser, Config.STORM_ZOOKEEPER_SUPERACL));
+    }
+
+    /**
+     * Get the ZK ACLs that a worker should use when writing to ZK.
+     * @param conf the config for the topology.
+     * @return the ACLs
+     */
+    public static List<ACL> getWorkerACL(Map<String, Object> conf) {
+        if (!isZkAuthenticationConfiguredTopology(conf)) {
+            return null;
         }
         ArrayList<ACL> ret = new ArrayList<ACL>(ZooDefs.Ids.CREATOR_ALL_ACL);
-        ret.add(new ACL(ZooDefs.Perms.ALL, new Id(split[0], split[1])));
-        return ret;
+        ret.add(getSuperUserAcl(conf));
+	return ret;
     }
 
     /**
@@ -1366,45 +1434,12 @@ public class Utils {
      * Given a File input it will unzip the file in a the unzip directory
      * passed as the second parameter
      * @param inFile The zip file as input
-     * @param unzipDir The unzip directory where to unzip the zip file.
+     * @param toDir The unzip directory where to unzip the zip file.
      * @throws IOException
      */
-    public static void unZip(File inFile, File unzipDir) throws IOException {
-        Enumeration<? extends ZipEntry> entries;
-        ZipFile zipFile = new ZipFile(inFile);
-
-        try {
-            entries = zipFile.entries();
-            while (entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
-                if (!entry.isDirectory()) {
-                    InputStream in = zipFile.getInputStream(entry);
-                    try {
-                        File file = new File(unzipDir, entry.getName());
-                        if (!file.getParentFile().mkdirs()) {
-                            if (!file.getParentFile().isDirectory()) {
-                                throw new IOException("Mkdirs failed to create " +
-                                                      file.getParentFile().toString());
-                            }
-                        }
-                        OutputStream out = new FileOutputStream(file);
-                        try {
-                            byte[] buffer = new byte[8192];
-                            int i;
-                            while ((i = in.read(buffer)) != -1) {
-                                out.write(buffer, 0, i);
-                            }
-                        } finally {
-                            out.close();
-                        }
-                    } finally {
-                        in.close();
-                    }
-                }
-            }
-        } finally {
-            zipFile.close();
-        }
+    public static void unZip(File inFile, File toDir) throws IOException {
+        try (ZipFile zipFile = new ZipFile(inFile)) {
+            extractZipFile(zipFile, toDir, null);        }
     }
 
     /**
@@ -1874,21 +1909,10 @@ public class Utils {
     public static void extractDirFromJar(String jarpath, String dir, File destdir) {
         _instance.extractDirFromJarImpl(jarpath, dir, destdir);
     }
-    
+
     public void extractDirFromJarImpl(String jarpath, String dir, File destdir) {
         try (JarFile jarFile = new JarFile(jarpath)) {
-            Enumeration<JarEntry> jarEnums = jarFile.entries();
-            while (jarEnums.hasMoreElements()) {
-                JarEntry entry = jarEnums.nextElement();
-                if (!entry.isDirectory() && entry.getName().startsWith(dir)) {
-                    File aFile = new File(destdir, entry.getName());
-                    aFile.getParentFile().mkdirs();
-                    try (FileOutputStream out = new FileOutputStream(aFile);
-                         InputStream in = jarFile.getInputStream(entry)) {
-                        IOUtils.copy(in, out);
-                    }
-                }
-            }
+            extractZipFile(jarFile, destdir, dir);
         } catch (IOException e) {
             LOG.info("Could not extract {} from {}", dir, jarpath);
         }
