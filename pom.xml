@@ -27,7 +27,7 @@
 
     <groupId>org.apache.storm</groupId>
     <artifactId>storm</artifactId>
-    <version>1.2.3-SNAPSHOT</version>
+    <version>1.2.2-EF</version>
     <packaging>pom</packaging>
     <name>Storm</name>
     <description>Distributed and fault-tolerant realtime computation</description>
@@ -202,7 +202,7 @@
     <scm>
         <connection>scm:git:ssh://git@github.com/ef-labs/storm.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/ef-labs/storm.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>v1.2.2-EF</tag>
         <url>https://github.com/ef-labs/storm</url>
     </scm>
 
