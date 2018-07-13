@@ -17,16 +17,15 @@
  */
 package org.apache.storm.blobstore;
 
-import org.apache.storm.generated.KeyNotFoundException;
-import org.apache.storm.nimbus.NimbusInfo;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.zookeeper.ZooDefs;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.storm.generated.KeyNotFoundException;
+import org.apache.storm.nimbus.NimbusInfo;
+import org.apache.curator.framework.CuratorFramework;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Is called periodically and updates the nimbus with blobs based on the state stored inside the zookeeper
@@ -58,6 +57,10 @@ public class BlobSynchronizer {
         this.blobStoreKeySet = blobStoreKeySet;
     }
 
+    public void setZkClient(CuratorFramework zkClient) {
+        this.zkClient = zkClient;
+    }
+
     public Set<String> getBlobStoreKeySet() {
         Set<String> keySet = new HashSet<String>();
         keySet.addAll(blobStoreKeySet);
@@ -73,7 +76,6 @@ public class BlobSynchronizer {
     public synchronized void syncBlobs() {
         try {
             LOG.debug("Sync blobs - blobstore keys {}, zookeeper keys {}",getBlobStoreKeySet(), getZookeeperKeySet());
-            zkClient = BlobStoreUtils.createZKClient(conf, ZooDefs.Ids.CREATOR_ALL_ACL);
             deleteKeySetFromBlobStoreNotOnZookeeper(getBlobStoreKeySet(), getZookeeperKeySet());
             updateKeySetForBlobStore(getBlobStoreKeySet());
             Set<String> keySetToDownload = getKeySetToDownload(getBlobStoreKeySet(), getZookeeperKeySet());
@@ -89,9 +91,6 @@ public class BlobSynchronizer {
                 } catch (KeyNotFoundException e) {
                     LOG.debug("Detected deletion for the key {} while downloading - skipping download", key);
                 }
-            }
-            if (zkClient !=null) {
-                zkClient.close();
             }
         } catch(InterruptedException exp) {
             LOG.error("InterruptedException {}", exp);

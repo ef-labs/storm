@@ -85,6 +85,7 @@ public class PartitionManagerTest {
             zkState,
             0,
             1,
+            1,
             "topo"
         );
 

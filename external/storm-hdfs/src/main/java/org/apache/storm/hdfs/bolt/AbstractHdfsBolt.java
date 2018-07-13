@@ -31,11 +31,10 @@ import org.apache.storm.hdfs.bolt.format.FileNameFormat;
 import org.apache.storm.hdfs.bolt.rotation.FileRotationPolicy;
 import org.apache.storm.hdfs.bolt.rotation.TimedRotationPolicy;
 import org.apache.storm.hdfs.bolt.sync.SyncPolicy;
-import org.apache.storm.hdfs.common.AbstractHDFSWriter;
 import org.apache.storm.hdfs.common.NullPartitioner;
 import org.apache.storm.hdfs.common.Partitioner;
 import org.apache.storm.hdfs.common.rotation.RotationAction;
-import org.apache.storm.hdfs.common.security.HdfsSecurityUtil;
+import org.apache.storm.hdfs.security.HdfsSecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +58,7 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
     private static final int DEFAULT_TICK_TUPLE_INTERVAL_SECS = 15;
     private static final Integer DEFAULT_MAX_OPEN_FILES = 50;
 
-    protected Map<String, AbstractHDFSWriter> writers;
+    protected Map<String, Writer> writers;
     protected Map<String, Integer> rotationCounterMap = new HashMap<>();
     protected List<RotationAction> rotationActions = new ArrayList<>();
     protected OutputCollector collector;
@@ -80,7 +79,7 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
 
     protected transient Configuration hdfsConfig;
 
-    protected void rotateOutputFile(AbstractHDFSWriter writer) throws IOException {
+    protected void rotateOutputFile(Writer writer) throws IOException {
         LOG.info("Rotating output file...");
         long start = System.currentTimeMillis();
         synchronized (this.writeLock) {
@@ -102,7 +101,7 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
      * @param topologyContext
      * @param collector
      */
-    public final void prepare(Map conf, TopologyContext topologyContext, OutputCollector collector){
+    public final void prepare(Map conf, TopologyContext topologyContext, OutputCollector collector) {
         this.writeLock = new Object();
         if (this.syncPolicy == null) {
             throw new IllegalStateException("SyncPolicy must be specified.");
@@ -119,21 +118,21 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
         this.collector = collector;
         this.fileNameFormat.prepare(conf, topologyContext);
         this.hdfsConfig = new Configuration();
-        Map<String, Object> map = (Map<String, Object>)conf.get(this.configKey);
-        if(map != null){
-            for(String key : map.keySet()){
+        Map<String, Object> map = (Map<String, Object>) conf.get(this.configKey);
+        if (map != null) {
+            for (String key : map.keySet()) {
                 this.hdfsConfig.set(key, String.valueOf(map.get(key)));
             }
         }
 
-        try{
+        try {
             HdfsSecurityUtil.login(conf, hdfsConfig);
             doPrepare(conf, topologyContext, collector);
-        } catch (Exception e){
+        } catch (Exception e) {
             throw new RuntimeException("Error preparing HdfsBolt: " + e.getMessage(), e);
         }
 
-        if(this.rotationPolicy instanceof TimedRotationPolicy){
+        if (this.rotationPolicy instanceof TimedRotationPolicy) {
             startTimedRotationPolicy();
         }
     }
@@ -143,7 +142,7 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
 
         synchronized (this.writeLock) {
             boolean forceSync = false;
-            AbstractHDFSWriter writer = null;
+            Writer writer = null;
             String writerKey = null;
 
             if (TupleUtils.isTick(tuple)) {
@@ -209,8 +208,8 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
         }
     }
 
-    private AbstractHDFSWriter getOrCreateWriter(String writerKey, Tuple tuple) throws IOException {
-        AbstractHDFSWriter writer;
+    private Writer getOrCreateWriter(String writerKey, Tuple tuple) throws IOException {
+        Writer writer;
 
         writer = writers.get(writerKey);
         if (writer == null) {
@@ -234,7 +233,7 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
         return boltKey + "****" + partitionDir;
     }
 
-    void doRotationAndRemoveWriter(String writerKey, AbstractHDFSWriter writer) {
+    void doRotationAndRemoveWriter(String writerKey, Writer writer) {
         try {
             rotateOutputFile(writer);
         } catch (IOException e) {
@@ -263,25 +262,27 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
     }
 
     private void syncAllWriters() throws IOException {
-        for (AbstractHDFSWriter writer : writers.values()) {
+        for (Writer writer : writers.values()) {
             writer.sync();
         }
     }
 
     private void startTimedRotationPolicy() {
-        long interval = ((TimedRotationPolicy)this.rotationPolicy).getInterval();
+        long interval = ((TimedRotationPolicy) this.rotationPolicy).getInterval();
         this.rotationTimer = new Timer(true);
         TimerTask task = new TimerTask() {
             @Override
             public void run() {
-                for (final AbstractHDFSWriter writer : writers.values()) {
-                    try {
-                        rotateOutputFile(writer);
-                    } catch (IOException e) {
-                        LOG.warn("IOException during scheduled file rotation.", e);
+                synchronized (writeLock) {
+                    for (final Writer writer : writers.values()) {
+                        try {
+                            rotateOutputFile(writer);
+                        } catch (IOException e) {
+                            LOG.warn("IOException during scheduled file rotation.", e);
+                        }
                     }
+                    writers.clear();
                 }
-                writers.clear();
             }
         };
         this.rotationTimer.scheduleAtFixedRate(task, interval, interval);
@@ -299,26 +300,26 @@ public abstract class AbstractHdfsBolt extends BaseRichBolt {
         rotationCounterMap.put(partitionPath, rotation);
 
         return new Path(this.fsUrl + this.fileNameFormat.getPath() + partitionPath,
-                this.fileNameFormat.getName(rotation, System.currentTimeMillis()));
+            this.fileNameFormat.getName(rotation, System.currentTimeMillis()));
     }
 
     abstract protected void doPrepare(Map conf, TopologyContext topologyContext, OutputCollector collector) throws IOException;
 
     abstract protected String getWriterKey(Tuple tuple);
 
-    abstract protected AbstractHDFSWriter makeNewWriter(Path path, Tuple tuple) throws IOException;
+    abstract protected Writer makeNewWriter(Path path, Tuple tuple) throws IOException;
 
-    static class WritersMap extends LinkedHashMap<String, AbstractHDFSWriter> {
+    static class WritersMap extends LinkedHashMap<String, Writer> {
 
         final long maxWriters;
 
         public WritersMap(long maxWriters) {
-            super((int)maxWriters, 0.75f, true);
+            super((int) maxWriters, 0.75f, true);
             this.maxWriters = maxWriters;
         }
 
         @Override
-        protected boolean removeEldestEntry(Map.Entry<String, AbstractHDFSWriter> eldest) {
+        protected boolean removeEldestEntry(Map.Entry<String, Writer> eldest) {
             return this.size() > this.maxWriters;
         }
     }

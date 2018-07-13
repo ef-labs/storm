@@ -36,6 +36,7 @@ import java.util.*;
 // TODO: need to make a best effort to not re-emit messages if don't have to
 /**
  * @deprecated storm-kafka has been deprecated and will be removed in a future Storm release. Please upgrade to storm-kafka-client.
+ * If you need to migrate the committed offsets to the new spout, consider using the storm-kafka-migration tool.
  */
 @Deprecated
 public class KafkaSpout extends BaseRichSpout {
@@ -86,11 +87,11 @@ public class KafkaSpout extends BaseRichSpout {
         if (_spoutConfig.hosts instanceof StaticHosts) {
             _coordinator = new StaticCoordinator(_connections, conf,
                     _spoutConfig, _state, context.getThisTaskIndex(),
-                    totalTasks, topologyInstanceId);
+                    totalTasks, context.getThisTaskId(), topologyInstanceId);
         } else {
             _coordinator = new ZkCoordinator(_connections, conf,
                     _spoutConfig, _state, context.getThisTaskIndex(),
-                    totalTasks, topologyInstanceId);
+                    totalTasks, context.getThisTaskId(), topologyInstanceId);
         }
 
         context.registerMetric("kafkaOffset", new IMetric() {

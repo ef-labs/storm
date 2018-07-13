@@ -27,7 +27,7 @@
 
     <groupId>org.apache.storm</groupId>
     <artifactId>storm</artifactId>
-    <version>1.1.4-SNAPSHOT</version>
+    <version>1.2.3-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Storm</name>
     <description>Distributed and fault-tolerant realtime computation</description>
@@ -271,7 +271,7 @@
 
         <calcite.version>1.11.0</calcite.version>
 
-        <jackson.version>2.6.3</jackson.version>
+        <jackson.version>2.9.4</jackson.version>
         <maven-surefire.version>2.18.1</maven-surefire.version>
         <!-- Kafka version used by old storm-kafka spout code -->
         <storm.kafka.version>0.8.2.1</storm.kafka.version>
@@ -307,6 +307,7 @@
         <module>storm-rename-hack</module>
 
         <!-- externals -->
+        <module>external/storm-autocreds</module>
         <module>external/storm-kafka</module>
         <module>external/storm-hdfs</module>
         <module>external/storm-hbase</module>
@@ -326,6 +327,7 @@
         <module>external/storm-druid</module>
         <module>external/storm-submit-tools</module>
         <module>external/storm-kafka-client</module>
+        <module>external/storm-kafka-migration</module>
         <module>external/storm-opentsdb</module>
         <module>external/storm-kafka-monitor</module>
         <module>external/storm-jms</module>
@@ -892,6 +894,16 @@
             <dependency>
                 <groupId>io.dropwizard.metrics</groupId>
                 <artifactId>metrics-core</artifactId>
+                <version>${metrics.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-graphite</artifactId>
+                <version>${metrics.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.dropwizard.metrics</groupId>
+                <artifactId>metrics-ganglia</artifactId>
                 <version>${metrics.version}</version>
             </dependency>
             <dependency>

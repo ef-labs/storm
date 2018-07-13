@@ -20,7 +20,7 @@
     <parent>
         <artifactId>storm</artifactId>
         <groupId>org.apache.storm</groupId>
-        <version>1.1.4-SNAPSHOT</version>
+        <version>1.2.3-SNAPSHOT</version>
         <relativePath>..</relativePath>
     </parent>
     <groupId>org.apache.storm</groupId>
@@ -254,6 +254,21 @@
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-graphite</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-ganglia</artifactId>
+            <exclusions>
+                <!-- the following is LGPL and needs to be installed manually -->
+                <exclusion>
+                    <groupId>org.acplt</groupId>
+                    <artifactId>oncrpc</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>metrics-clojure</groupId>
@@ -506,7 +521,6 @@
                             <include>org.clojure:tools.namespace</include>
                             <include>cheshire:cheshire</include>
                             <include>org.clojure:core.incubator</include>
-                            <include>io.dropwizard.metrics:*</include>
                             <include>metrics-clojure:*</include>
                         </includes>
                     </artifactSet>
@@ -679,10 +693,6 @@
                         <relocation>
                           <pattern>org.eclipse.jetty</pattern>
                           <shadedPattern>org.apache.storm.shade.org.eclipse.jetty</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>com.codahale.metrics</pattern>
-                            <shadedPattern>org.apache.storm.shade.com.codahale.metrics</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>metrics.core</pattern>

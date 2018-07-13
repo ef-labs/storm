@@ -197,6 +197,8 @@ task.backpressure.poll.secs: 30
 topology.backpressure.enable: false
 backpressure.disruptor.high.watermark: 0.9
 backpressure.disruptor.low.watermark: 0.4
+backpressure.znode.timeout.secs: 30
+backpressure.znode.update.freq.secs: 15
 
 zmq.threads: 1
 zmq.linger.millis: 5000
@@ -296,3 +298,27 @@ storm.daemon.metrics.reporter.plugins:
 
 # configuration of cluster metrics consumer
 storm.cluster.metrics.consumer.publish.interval.secs: 60
+
+
+# Metrics v2 configuration (optional)
+#storm.metrics.reporters:
+#  # Graphite Reporter
+#  - class: "org.apache.storm.metrics2.reporters.GraphiteStormReporter"
+#    daemons:
+#        - "supervisor"
+#        - "nimbus"
+#        - "worker"
+#    report.period: 60
+#    report.period.units: "SECONDS"
+#    graphite.host: "localhost"
+#    graphite.port: 2003
+#
+#  # Console Reporter
+#  - class: "org.apache.storm.metrics2.reporters.ConsoleStormReporter"
+#    daemons:
+#        - "worker"
+#    report.period: 10
+#    report.period.units: "SECONDS"
+#    filter:
+#        class: "org.apache.storm.metrics2.filters.RegexFilter"
+#        expression: ".*my_component.*emitted.*"
