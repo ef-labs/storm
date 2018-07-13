@@ -200,10 +200,10 @@
     </prerequisites>
 
     <scm>
-        <connection>scm:git:https://git-wip-us.apache.org/repos/asf/storm.git</connection>
-        <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/storm.git</developerConnection>
+        <connection>scm:git:ssh://git@github.com/ef-labs/storm.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/ef-labs/storm.git</developerConnection>
         <tag>HEAD</tag>
-        <url>https://git-wip-us.apache.org/repos/asf/storm</url>
+        <url>https://github.com/ef-labs/storm</url>
     </scm>
 
     <issueManagement>
