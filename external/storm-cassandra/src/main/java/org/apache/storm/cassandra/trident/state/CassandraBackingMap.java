@@ -34,7 +34,6 @@ import org.apache.storm.trident.state.JSONTransactionalSerializer;
 import org.apache.storm.trident.state.OpaqueValue;
 import org.apache.storm.trident.state.Serializer;
 import org.apache.storm.trident.state.TransactionalValue;
-import org.apache.storm.trident.state.map.IBackingMap;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.ITuple;
 import org.apache.storm.tuple.Values;
@@ -67,13 +66,13 @@ import java.util.concurrent.Semaphore;
  *
  * @param <T>
  */
-public class CassandraBackingMap<T> implements IBackingMap<T> {
+public class CassandraBackingMap<T> implements ICassandraBackingMap<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(CassandraBackingMap.class);
 
-    private final Map conf;
-    private final Options<T> options;
-    private final Fields allFields;
+    private Map conf;
+    private Options<T> options;
+    private Fields allFields;
 
     private SimpleClient client;
     private Session session;
@@ -82,15 +81,16 @@ public class CassandraBackingMap<T> implements IBackingMap<T> {
     private Semaphore throttle;
 
 
-    protected CassandraBackingMap(Map conf, Options<T> options) {
+    protected CassandraBackingMap() {
+    }
+
+    public void prepare(Map conf, Options<T> options) {
         this.conf = conf;
         this.options = options;
         List<String> allFields = options.keyFields.toList();
         allFields.addAll(options.stateMapper.getStateFields().toList());
         this.allFields = new Fields(allFields);
-    }
 
-    public void prepare() {
         LOG.info("Preparing state for {}", options.toString());
         Preconditions.checkNotNull(options.getMapper, "CassandraBackingMap.Options should have getMapper");
         Preconditions.checkNotNull(options.putMapper, "CassandraBackingMap.Options should have putMapper");
@@ -106,8 +106,14 @@ public class CassandraBackingMap<T> implements IBackingMap<T> {
             LOG.info("Parallelism default set to {}", options.maxParallelism);
         }
         throttle = new Semaphore(options.maxParallelism, false);
-        this.getResultMapper = new TridentAyncCQLResultSetValuesMapper(options.stateMapper.getStateFields(), throttle);
-        this.putResultMapper = new TridentAyncCQLResultSetValuesMapper(null, throttle);
+        if (options.getResultMapper == null) {
+            options.getResultMapper = new TridentAyncCQLResultSetValuesMapper(options.stateMapper.getStateFields(), throttle);
+        }
+        if (options.putResultMapper == null) {
+            options.putResultMapper = new TridentAyncCQLResultSetValuesMapper(null, throttle);
+        }
+        this.getResultMapper = options.getResultMapper;
+        this.putResultMapper = options.putResultMapper;
     }
 
     @Override
@@ -164,6 +170,8 @@ public class CassandraBackingMap<T> implements IBackingMap<T> {
         private StateMapper stateMapper;
         private CQLStatementTupleMapper getMapper;
         private CQLStatementTupleMapper putMapper;
+        private AyncCQLResultSetValuesMapper getResultMapper;
+        private AyncCQLResultSetValuesMapper putResultMapper;
         private Integer maxParallelism = 128;
 
         public Options(SimpleClientProvider clientProvider) {
@@ -220,6 +228,16 @@ public class CassandraBackingMap<T> implements IBackingMap<T> {
             return this;
         }
 
+        public Options<T> withGetResultMapper(AyncCQLResultSetValuesMapper getResultMapper) {
+            this.getResultMapper = getResultMapper;
+            return this;
+        }
+
+        public Options<T> withPutResultMapper(AyncCQLResultSetValuesMapper putResultMapper) {
+            this.putResultMapper = putResultMapper;
+            return this;
+        }
+
         public Options<T> withMaxParallelism(Integer maxParallelism) {
             this.maxParallelism = maxParallelism;
             return this;
@@ -227,12 +245,15 @@ public class CassandraBackingMap<T> implements IBackingMap<T> {
 
         @Override
         public String toString() {
-            return String.format("%s: [keys: %s, StateMapper: %s, getMapper: %s, putMapper: %s, maxParallelism: %d",
+            return String.format("%s: [keys: %s, StateMapper: %s, getMapper: %s, putMapper: %s, " +
+                            "getResultMapper: %s, putResultMapper: %s, maxParallelism: %d",
                     this.getClass().getSimpleName(),
                     keyFields,
                     stateMapper,
                     getMapper,
                     putMapper,
+                    getResultMapper,
+                    putResultMapper,
                     maxParallelism
             );
         }

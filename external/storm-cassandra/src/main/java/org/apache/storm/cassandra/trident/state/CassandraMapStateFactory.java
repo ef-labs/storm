@@ -46,6 +46,7 @@ public class CassandraMapStateFactory implements StateFactory {
     private final CassandraBackingMap.Options options;
     private int cacheSize;
     private Map cassandraConfig;
+    private ICassandraBackingMapProvider backingMapProvider;
 
     private CassandraMapStateFactory(StateType stateType, CassandraBackingMap.Options options, Map cassandraConfig) {
         this.stateType = stateType;
@@ -70,12 +71,17 @@ public class CassandraMapStateFactory implements StateFactory {
         return this;
     }
 
+    public CassandraMapStateFactory withBackingMapProvider(ICassandraBackingMapProvider backingMapProvider) {
+        this.backingMapProvider = backingMapProvider;
+        return this;
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public State makeState(Map conf, IMetricsContext metrics, int partitionIndex, int numPartitions) {
 
-        CassandraBackingMap cassandraBackingMap = new CassandraBackingMap(cassandraConfig, options);
-        cassandraBackingMap.prepare();
+        ICassandraBackingMap cassandraBackingMap = (backingMapProvider == null) ? new CassandraBackingMap() : backingMapProvider.get();
+        cassandraBackingMap.prepare(cassandraConfig, options);
 
         IBackingMap backingMap = cacheSize > 0
                 ? new CachedMap<>(cassandraBackingMap, cacheSize)
