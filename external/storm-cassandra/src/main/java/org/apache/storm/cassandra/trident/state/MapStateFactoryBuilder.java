@@ -21,6 +21,7 @@ package org.apache.storm.cassandra.trident.state;
 import com.datastax.driver.core.querybuilder.Insert;
 import com.datastax.driver.core.querybuilder.Select;
 import org.apache.storm.cassandra.CassandraContext;
+import org.apache.storm.cassandra.query.AyncCQLResultSetValuesMapper;
 import org.apache.storm.cassandra.query.CQLStatementTupleMapper;
 import org.apache.storm.trident.state.JSONNonTransactionalSerializer;
 import org.apache.storm.trident.state.JSONOpaqueSerializer;
@@ -80,8 +81,11 @@ public class MapStateFactoryBuilder<T> {
     private Integer maxParallelism;
     private StateType stateType;
     private StateMapper<T> stateMapper;
+    private AyncCQLResultSetValuesMapper getResultMapper;
+    private AyncCQLResultSetValuesMapper putResultMapper;
     private Map cassandraConfig;
     private int cacheSize;
+    private ICassandraBackingMapProvider backingMapProvider;
 
     public static <U> MapStateFactoryBuilder<OpaqueValue<U>> opaque(Map cassandraConf) {
         return new MapStateFactoryBuilder<OpaqueValue<U>>()
@@ -112,8 +116,23 @@ public class MapStateFactoryBuilder<T> {
         return this;
     }
 
+    public MapStateFactoryBuilder<T> withGetResultMapper(AyncCQLResultSetValuesMapper getResultMapper) {
+        this.getResultMapper = getResultMapper;
+        return this;
+    }
+
+    public MapStateFactoryBuilder<T> withPutResultMapper(AyncCQLResultSetValuesMapper putResultMapper) {
+        this.putResultMapper = putResultMapper;
+        return this;
+    }
+
     public MapStateFactoryBuilder<T> withMaxParallelism(Integer maxParallelism) {
         this.maxParallelism = maxParallelism;
+        return this;
+    }
+
+    public MapStateFactoryBuilder<T> withBackingMapProvider(ICassandraBackingMapProvider backingMapProvider) {
+        this.backingMapProvider = backingMapProvider;
         return this;
     }
 
@@ -199,6 +218,8 @@ public class MapStateFactoryBuilder<T> {
         CassandraBackingMap.Options options = new CassandraBackingMap.Options<T>(new CassandraContext())
                 .withGetMapper(get)
                 .withPutMapper(put)
+                .withGetResultMapper(getResultMapper)
+                .withPutResultMapper(putResultMapper)
                 .withStateMapper(stateMapper)
                 .withKeys(new Fields(keys))
                 .withMaxParallelism(maxParallelism);
@@ -211,12 +232,15 @@ public class MapStateFactoryBuilder<T> {
         switch (stateType) {
             case NON_TRANSACTIONAL:
                 return CassandraMapStateFactory.nonTransactional(options, cassandraConfig)
+                        .withBackingMapProvider(backingMapProvider)
                         .withCache(cacheSize);
             case TRANSACTIONAL:
                 return CassandraMapStateFactory.transactional(options, cassandraConfig)
+                        .withBackingMapProvider(backingMapProvider)
                         .withCache(cacheSize);
             case OPAQUE:
                 return CassandraMapStateFactory.opaque(options, cassandraConfig)
+                        .withBackingMapProvider(backingMapProvider)
                         .withCache(cacheSize);
         }
 
