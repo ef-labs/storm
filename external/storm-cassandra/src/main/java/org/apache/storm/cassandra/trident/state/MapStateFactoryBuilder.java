@@ -83,6 +83,8 @@ public class MapStateFactoryBuilder<T> {
     private StateMapper<T> stateMapper;
     private AyncCQLResultSetValuesMapper getResultMapper;
     private AyncCQLResultSetValuesMapper putResultMapper;
+    private CQLStatementTupleMapper getQueryMapper;
+    private CQLStatementTupleMapper putQueryMapper;
     private Map cassandraConfig;
     private int cacheSize;
     private ICassandraBackingMapProvider backingMapProvider;
@@ -133,6 +135,16 @@ public class MapStateFactoryBuilder<T> {
 
     public MapStateFactoryBuilder<T> withBackingMapProvider(ICassandraBackingMapProvider backingMapProvider) {
         this.backingMapProvider = backingMapProvider;
+        return this;
+    }
+
+    public MapStateFactoryBuilder<T> withGetQueryMapper(CQLStatementTupleMapper getQueryMapper) {
+        this.getQueryMapper = getQueryMapper;
+        return this;
+    }
+
+    public MapStateFactoryBuilder<T> withPutQueryMapper(CQLStatementTupleMapper putQueryMapper) {
+        this.putQueryMapper = putQueryMapper;
         return this;
     }
 
@@ -194,30 +206,12 @@ public class MapStateFactoryBuilder<T> {
         Collections.addAll(allFields, keys);
         allFields.addAll(stateFields);
 
-        // Build get query
-        Select.Where getQuery = select(stateFieldsArray)
-                .from(keyspace, table)
-                .where();
-
-        for (String key : keys) {
-            getQuery.and(eq(key, bindMarker()));
-        }
-
-        CQLStatementTupleMapper get = boundQuery(getQuery.toString())
-                .bind(all())
-                .build();
-
-        // Build put query
-        Insert putStatement = insertInto(keyspace, table)
-                .values(allFields, Collections.<Object>nCopies(allFields.size(), bindMarker()));
-
-        CQLStatementTupleMapper put = boundQuery(putStatement.toString())
-                .bind(all())
-                .build();
+        CQLStatementTupleMapper getQueryMapper = this.getQueryMapper != null ? this.getQueryMapper : generateGetQuery(stateFieldsArray, keys);
+        CQLStatementTupleMapper putQueryMapper = this.putQueryMapper != null ? this.putQueryMapper : generatePutQuery(allFields);
 
         CassandraBackingMap.Options options = new CassandraBackingMap.Options<T>(new CassandraContext())
-                .withGetMapper(get)
-                .withPutMapper(put)
+                .withGetMapper(getQueryMapper)
+                .withPutMapper(putQueryMapper)
                 .withGetResultMapper(getResultMapper)
                 .withPutResultMapper(putResultMapper)
                 .withStateMapper(stateMapper)
@@ -225,8 +219,8 @@ public class MapStateFactoryBuilder<T> {
                 .withMaxParallelism(maxParallelism);
 
         logger.debug("Building factory with: \n  get: {}\n  put: {}\n  mapper: {}",
-                getQuery.toString(),
-                putStatement.toString(),
+                getQueryMapper.toString(),
+                putQueryMapper.toString(),
                 stateMapper.toString());
 
         switch (stateType) {
@@ -245,6 +239,33 @@ public class MapStateFactoryBuilder<T> {
         }
 
         return null;
+    }
+
+    private CQLStatementTupleMapper generatePutQuery(List<String> allFields) {
+
+        // Build put query
+        Insert putStatement = insertInto(keyspace, table)
+                .values(allFields, Collections.<Object>nCopies(allFields.size(), bindMarker()));
+
+        return boundQuery(putStatement.toString())
+                .bind(all())
+                .build();
+    }
+
+    private CQLStatementTupleMapper generateGetQuery(String[] stateFieldsArray, String[] keys) {
+
+        // Build get query
+        Select.Where getQuery = select(stateFieldsArray)
+                .from(keyspace, table)
+                .where();
+
+        for (String key : keys) {
+            getQuery.and(eq(key, bindMarker()));
+        }
+
+        return boundQuery(getQuery.toString())
+                .bind(all())
+                .build();
     }
 
 }
