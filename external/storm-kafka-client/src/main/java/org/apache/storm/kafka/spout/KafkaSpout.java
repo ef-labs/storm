@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -227,13 +228,14 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
             waitingToEmit.keySet().retainAll(partitions);
 
             Set<TopicPartition> newPartitions = new HashSet<>(partitions);
+            // If this partition was previously assigned to this spout,
+            // leave the acked offsets and consumer position as they were to resume where it left off
             newPartitions.removeAll(previousAssignment);
             for (TopicPartition newTp : newPartitions) {
                 final OffsetAndMetadata committedOffset = kafkaConsumer.committed(newTp);
                 final long fetchOffset = doSeek(newTp, committedOffset);
                 LOG.debug("Set consumer position to [{}] for topic-partition [{}] with [{}] and committed offset [{}]",
                     fetchOffset, newTp, firstPollOffsetStrategy, committedOffset);
-                // If this partition was previously assigned to this spout, leave the acked offsets as they were to resume where it left off
                 if (isAtLeastOnceProcessing() && !offsetManagers.containsKey(newTp)) {
                     offsetManagers.put(newTp, new OffsetManager(newTp, fetchOffset));
                 }
@@ -364,7 +366,7 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
 
     private void setWaitingToEmit(ConsumerRecords<K, V> consumerRecords) {
         for (TopicPartition tp : consumerRecords.partitions()) {
-            waitingToEmit.put(tp, new ArrayList<>(consumerRecords.records(tp)));
+            waitingToEmit.put(tp, new LinkedList<>(consumerRecords.records(tp)));
         }
     }
 
@@ -543,22 +545,25 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
                      * The position is behind the committed offset. This can happen in some cases, e.g. if a message failed, lots of (more
                      * than max.poll.records) later messages were acked, and the failed message then gets acked. The consumer may only be
                      * part way through "catching up" to where it was when it went back to retry the failed tuple. Skip the consumer forward
-                     * to the committed offset and drop the current waiting to emit list, since it'll likely contain committed offsets.
+                     * to the committed offset.
                      */
                     LOG.debug("Consumer fell behind committed offset. Catching up. Position was [{}], skipping to [{}]",
                         position, committedOffset);
                     kafkaConsumer.seek(tp, committedOffset);
-                    List<ConsumerRecord<K, V>> waitingToEmitForTp = waitingToEmit.get(tp);
-                    if (waitingToEmitForTp != null) {
-                        //Discard the pending records that are already committed
-                        List<ConsumerRecord<K, V>> filteredRecords = new ArrayList<>();
-                        for (ConsumerRecord<K, V> record : waitingToEmitForTp) {
-                            if (record.offset() >= committedOffset) {
-                                filteredRecords.add(record);
-                            }
+                }
+                /**
+                 * In some cases the waitingToEmit list may contain tuples that have just been committed. Drop these.
+                 */
+                List<ConsumerRecord<K, V>> waitingToEmitForTp = waitingToEmit.get(tp);
+                if (waitingToEmitForTp != null) {
+                    //Discard the pending records that are already committed
+                    List<ConsumerRecord<K, V>> filteredRecords = new LinkedList<>();
+                    for (ConsumerRecord<K, V> record : waitingToEmitForTp) {
+                        if (record.offset() >= committedOffset) {
+                            filteredRecords.add(record);
                         }
-                        waitingToEmit.put(tp, filteredRecords);
                     }
+                    waitingToEmit.put(tp, filteredRecords);
                 }
 
                 final OffsetManager offsetManager = offsetManagers.get(tp);
@@ -707,9 +712,27 @@ public class KafkaSpout<K, V> extends BaseRichSpout {
         configuration.put(configKeyPrefix + "topics", getTopicsString());
 
         configuration.put(configKeyPrefix + "groupid", kafkaSpoutConfig.getConsumerGroupId());
-        configuration.put(configKeyPrefix + "bootstrap.servers", kafkaSpoutConfig.getKafkaProps().get("bootstrap.servers"));
-        configuration.put(configKeyPrefix + "security.protocol", kafkaSpoutConfig.getKafkaProps().get("security.protocol"));
+        for (Entry<String, Object> conf: kafkaSpoutConfig.getKafkaProps().entrySet()) {
+            if (conf.getValue() != null && isPrimitiveOrWrapper(conf.getValue().getClass())) {
+                configuration.put(configKeyPrefix + conf.getKey(), conf.getValue());
+            } else {
+                LOG.debug("Dropping Kafka prop '{}' from component configuration", conf.getKey());
+            }
+        }
         return configuration;
+    }
+
+    private boolean isPrimitiveOrWrapper(Class<?> type) {
+        if (type == null) {
+            return false;
+        }
+        return type.isPrimitive() || isWrapper(type);
+    }
+
+    private boolean isWrapper(Class<?> type) {
+        return type == Double.class || type == Float.class || type == Long.class ||
+                type == Integer.class || type == Short.class || type == Character.class ||
+                type == Byte.class || type == Boolean.class || type == String.class;
     }
 
     private String getTopicsString() {

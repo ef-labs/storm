@@ -20,7 +20,7 @@
     <parent>
         <artifactId>storm</artifactId>
         <groupId>org.apache.storm</groupId>
-        <version>1.2.3-SNAPSHOT</version>
+        <version>1.2.3</version>
         <relativePath>..</relativePath>
     </parent>
     <groupId>org.apache.storm</groupId>
@@ -282,10 +282,6 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.zookeeper</groupId>
-            <artifactId>zookeeper</artifactId>
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>

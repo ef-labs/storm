@@ -21,7 +21,7 @@
     <parent>
         <artifactId>storm</artifactId>
         <groupId>org.apache.storm</groupId>
-        <version>1.2.3-SNAPSHOT</version>
+        <version>1.2.3</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -38,7 +38,7 @@
     <repositories>
         <repository>
             <id>confluent</id>
-            <url>http://packages.confluent.io/maven</url>
+            <url>https://packages.confluent.io/maven</url>
         </repository>
     </repositories>
 
