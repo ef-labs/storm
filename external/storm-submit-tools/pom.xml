@@ -19,7 +19,7 @@
     <parent>
         <artifactId>storm</artifactId>
         <groupId>org.apache.storm</groupId>
-        <version>1.2.3</version>
+        <version>1.2.3-EF1</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -192,4 +192,8 @@
         </plugins>
     </build>
 
+
+  <scm>
+    <tag>v1.2.3-EF1</tag>
+  </scm>
 </project>
