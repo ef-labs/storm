@@ -21,12 +21,13 @@
     <parent>
         <artifactId>storm</artifactId>
         <groupId>org.apache.storm</groupId>
-        <version>1.2.3-EF1</version>
+        <version>1.2.4-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <packaging>jar</packaging>
     <artifactId>storm-kafka</artifactId>
+  <version>1.2.3</version>
     <name>storm-kafka</name>
     <description>Storm Spouts for Apache Kafka</description>
 
@@ -118,8 +119,4 @@
             <artifactId>json-simple</artifactId>
         </dependency>
     </dependencies>
-
-  <scm>
-    <tag>v1.2.3-EF1</tag>
-  </scm>
 </project>

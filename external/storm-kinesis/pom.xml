@@ -17,12 +17,13 @@
     <parent>
         <artifactId>storm</artifactId>
         <groupId>org.apache.storm</groupId>
-        <version>1.2.3-EF1</version>
+        <version>1.2.4-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <packaging>jar</packaging>
     <artifactId>storm-kinesis</artifactId>
+  <version>1.2.3</version>
     <name>storm-kinesis</name>
 
     <properties>
@@ -55,10 +56,5 @@
             <artifactId>json-simple</artifactId>
         </dependency>
     </dependencies>
-
-
-  <scm>
-    <tag>v1.2.3-EF1</tag>
-  </scm>
 </project>
 

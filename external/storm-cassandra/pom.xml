@@ -21,12 +21,13 @@
     <parent>
         <artifactId>storm</artifactId>
         <groupId>org.apache.storm</groupId>
-        <version>1.2.3-EF1</version>
+        <version>1.2.4-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <packaging>jar</packaging>
     <artifactId>storm-cassandra</artifactId>
+  <version>1.2.3</version>
     <name>storm-cassandra</name>
     <description>Storm Bolts for Apache Cassandra</description>
 
@@ -116,8 +117,4 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-  <scm>
-    <tag>v1.2.3-EF1</tag>
-  </scm>
 </project>

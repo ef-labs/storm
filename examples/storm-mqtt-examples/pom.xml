@@ -19,6 +19,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>storm-mqtt-examples</artifactId>
+  <version>1.2.3</version>
   <packaging>jar</packaging>
 
   <name>storm-mqtt-examples</name>
@@ -26,7 +27,7 @@
   <parent>
     <artifactId>storm</artifactId>
     <groupId>org.apache.storm</groupId>
-    <version>1.2.3-EF1</version>
+    <version>1.2.4-SNAPSHOT</version>
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
@@ -124,9 +125,4 @@
       </plugin>
     </plugins>
   </build>
-
-
-  <scm>
-    <tag>v1.2.3-EF1</tag>
-  </scm>
 </project>

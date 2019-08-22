@@ -21,11 +21,12 @@
   <parent>
         <artifactId>storm</artifactId>
         <groupId>org.apache.storm</groupId>
-        <version>1.2.3-EF1</version>
+        <version>1.2.4-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
   </parent>
   <groupId>org.apache.storm</groupId>
   <artifactId>storm-maven-plugins</artifactId>
+  <version>1.2.3</version>
   <packaging>maven-plugin</packaging>
   <name>storm-maven-plugins</name>
 
@@ -77,8 +78,4 @@
       </plugin>
     </plugins>
   </build>
-
-  <scm>
-    <tag>v1.2.3-EF1</tag>
-  </scm>
 </project>
